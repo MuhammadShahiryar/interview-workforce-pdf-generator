@@ -22,23 +22,18 @@ export async function generatePDF(submission: UserSubmission): Promise<string> {
   let context: PDFGenerationContext | null = null;
 
   try {
-    console.log(`Starting PDF generation for submission ${submission.id}`);
 
-    // Create a new PDF document
     const pdfDoc = await PDFDocument.create();
 
-    // Add a page
     const page = pdfDoc.addPage([
       PDF_CONFIG.PAGE_WIDTH,
       PDF_CONFIG.PAGE_HEIGHT,
     ]);
     const { width: pageWidth, height: pageHeight } = page.getSize();
 
-    // Load fonts
     const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-    // Initialize context
     context = {
       doc: pdfDoc,
       page,
@@ -52,7 +47,6 @@ export async function generatePDF(submission: UserSubmission): Promise<string> {
       margin: PDF_CONFIG.MARGIN,
     };
 
-    // Generate PDF content
     addTitle(context, "Application Summary");
     addSection(
       context,
@@ -62,27 +56,22 @@ export async function generatePDF(submission: UserSubmission): Promise<string> {
     addSection(context, "Current Job Description", submission.jobDescription);
     addSection(context, "Uploaded Document", generateDocumentInfo(submission));
 
-    // Try to embed uploaded PDF if it exists and is accessible
     if (submission.uploadedFilePath) {
       await embedUploadedPDF(context, submission.uploadedFilePath);
     }
 
-    // Validate PDF before saving
     const pdfBytes = await pdfDoc.save();
     if (pdfBytes.length === 0) {
       throw new ApplicationError("Generated PDF is empty", 500);
     }
 
-    // Create generated PDFs directory
     const generatedDir = path.join(process.cwd(), "uploads", "generated");
     await mkdir(generatedDir, { recursive: true });
 
-    // Save PDF file
     const pdfFileName = `application-${submission.id}.pdf`;
     const pdfPath = path.join(generatedDir, pdfFileName);
     await writeFile(pdfPath, pdfBytes);
 
-    // Verify file was written correctly
     try {
       await access(pdfPath);
       const stats = await readFile(pdfPath);
@@ -90,14 +79,11 @@ export async function generatePDF(submission: UserSubmission): Promise<string> {
         throw new ApplicationError("Saved PDF file is empty", 500);
       }
     } catch (verificationError) {
-      console.error("PDF verification failed:", verificationError);
       throw new ApplicationError("PDF file verification failed", 500);
     }
 
-    console.log(`PDF generated successfully: ${pdfPath}`);
     return pdfPath;
   } catch (error) {
-    console.error("PDF generation error:", error);
 
     if (error instanceof ApplicationError) {
       throw error;
@@ -115,7 +101,6 @@ export async function generatePDF(submission: UserSubmission): Promise<string> {
 }
 
 function addTitle(context: PDFGenerationContext, title: string): void {
-  // Sanitize title to ensure WinAnsi compatibility
   const cleanTitle = title.replace(
     /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\xFF]/g,
     ""
@@ -136,19 +121,16 @@ function addSection(
   heading: string,
   content: string
 ): void {
-  // Check if we need a new page
   if (context.currentY < context.margin + 100) {
     context.page = context.doc.addPage([context.pageWidth, context.pageHeight]);
     context.currentY = context.pageHeight - context.margin;
   }
 
-  // Sanitize heading to ensure WinAnsi compatibility
   const cleanHeading = heading.replace(
     /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\xFF]/g,
     ""
   );
 
-  // Add heading
   context.page.drawText(cleanHeading, {
     x: context.margin,
     y: context.currentY,
@@ -158,7 +140,6 @@ function addSection(
   });
   context.currentY -= PDF_CONFIG.HEADING_SIZE + 10;
 
-  // Sanitize content and add with text wrapping
   const cleanContent = content.replace(
     /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\xFF]/g,
     ""
@@ -167,7 +148,6 @@ function addSection(
 
   for (const line of lines) {
     if (context.currentY < context.margin + 20) {
-      // Create new page if needed
       context.page = context.doc.addPage([
         context.pageWidth,
         context.pageHeight,
@@ -175,7 +155,6 @@ function addSection(
       context.currentY = context.pageHeight - context.margin;
     }
 
-    // Skip empty lines or lines that would cause encoding issues
     if (line.trim()) {
       try {
         context.page.drawText(line, {
@@ -186,24 +165,21 @@ function addSection(
           color: rgb(0, 0, 0),
         });
       } catch (drawError) {
-        console.warn(`Skipping line due to encoding error: ${line}`, drawError);
       }
     }
     context.currentY -= PDF_CONFIG.LINE_HEIGHT;
   }
 
-  context.currentY -= 20; // Section spacing
+  context.currentY -= 20;
 }
 
 function wrapText(text: string, context: PDFGenerationContext): string[] {
-  // First, handle newlines by splitting them into separate lines
   const paragraphs = text.split(/\r?\n/);
   const allLines: string[] = [];
 
   const maxWidth = context.pageWidth - 2 * context.margin;
 
   for (const paragraph of paragraphs) {
-    // If paragraph is empty, add an empty line
     if (!paragraph.trim()) {
       allLines.push("");
       continue;
@@ -214,7 +190,6 @@ function wrapText(text: string, context: PDFGenerationContext): string[] {
     let currentLine = "";
 
     for (const word of words) {
-      // Clean the word of any remaining special characters that WinAnsi can't handle
       const cleanWord = word.replace(
         /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\xFF]/g,
         ""
@@ -234,11 +209,6 @@ function wrapText(text: string, context: PDFGenerationContext): string[] {
           currentLine = testLine;
         }
       } catch (encodingError) {
-        // If we still get encoding errors, skip this word
-        console.warn(
-          `Skipping word due to encoding error: ${cleanWord}`,
-          encodingError
-        );
         continue;
       }
     }
@@ -247,7 +217,6 @@ function wrapText(text: string, context: PDFGenerationContext): string[] {
       lines.push(currentLine);
     }
 
-    // Add all lines from this paragraph
     allLines.push(...lines);
   }
 
@@ -288,18 +257,11 @@ async function embedUploadedPDF(
   filePath: string
 ): Promise<void> {
   try {
-    console.log(`Attempting to embed PDF from: ${filePath}`);
-
-    // Check if file exists and is accessible
     await access(filePath);
-    console.log(`File exists and is accessible: ${filePath}`);
 
-    // Read and embed the uploaded PDF
     const uploadedPdfBytes = await readFile(filePath);
-    console.log(`Read ${uploadedPdfBytes.length} bytes from uploaded PDF`);
 
     if (uploadedPdfBytes.length === 0) {
-      console.warn("Uploaded PDF file is empty, skipping embedding");
       addSection(
         context,
         "Attached Document",
@@ -308,7 +270,6 @@ async function embedUploadedPDF(
       return;
     }
 
-    // Try to load the PDF with better error handling
     let uploadedPdf: PDFDocument;
     try {
       uploadedPdf = await PDFDocument.load(uploadedPdfBytes, {
@@ -316,9 +277,7 @@ async function embedUploadedPDF(
         parseSpeed: 1,
         throwOnInvalidObject: false,
       });
-      console.log(`Successfully loaded uploaded PDF`);
     } catch (loadError) {
-      console.error("Failed to load uploaded PDF:", loadError);
       addSection(
         context,
         "Attached Document",
@@ -330,10 +289,8 @@ async function embedUploadedPDF(
     }
 
     const pageCount = uploadedPdf.getPageCount();
-    console.log(`Uploaded PDF has ${pageCount} pages`);
 
     if (pageCount === 0) {
-      console.warn("Uploaded PDF has no pages, skipping embedding");
       addSection(
         context,
         "Attached Document",
@@ -342,30 +299,22 @@ async function embedUploadedPDF(
       return;
     }
 
-    // Try to copy pages with error handling
     try {
       const pageIndices = uploadedPdf.getPageIndices();
-      console.log(`Copying pages: ${pageIndices.join(", ")}`);
 
       const copiedPages = await context.doc.copyPages(uploadedPdf, pageIndices);
-      console.log(`Successfully copied ${copiedPages.length} pages`);
 
-      // Add section divider
       addSection(
         context,
         "Attached Resume/Document",
         `The following ${pageCount} page(s) contain the uploaded document:`
       );
 
-      // Add all copied pages
       copiedPages.forEach((copiedPage, index) => {
         context.doc.addPage(copiedPage);
-        console.log(`Added page ${index + 1} to final PDF`);
       });
 
-      console.log(`Successfully embedded ${pageCount} pages from uploaded PDF`);
     } catch (copyError) {
-      console.error("Failed to copy pages from uploaded PDF:", copyError);
       addSection(
         context,
         "Attached Document",
@@ -375,8 +324,6 @@ async function embedUploadedPDF(
       );
     }
   } catch (error) {
-    console.error("Error embedding uploaded PDF:", error);
-    // Don't throw error, just add a note that embedding failed
     addSection(
       context,
       "Attached Document",

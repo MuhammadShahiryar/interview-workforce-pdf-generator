@@ -1,4 +1,3 @@
-// Form submission types
 export interface ApplicationFormData {
   firstName: string;
   lastName: string;
@@ -7,7 +6,6 @@ export interface ApplicationFormData {
   jobDescription: string;
 }
 
-// API response types
 export interface SubmitResponse {
   success: boolean;
   submissionId?: string;
@@ -15,7 +13,6 @@ export interface SubmitResponse {
   error?: string;
 }
 
-// Database model types (matches Prisma schema)
 export interface UserSubmission {
   id: string;
   firstName: string;
@@ -31,7 +28,6 @@ export interface UserSubmission {
   updatedAt: Date;
 }
 
-// Submission status enum
 export enum SubmissionStatus {
   PENDING = "pending",
   PROCESSING = "processing",

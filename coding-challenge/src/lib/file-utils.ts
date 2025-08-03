@@ -8,7 +8,6 @@ export interface FileValidationResult {
 }
 
 export function validateFile(file: File): FileValidationResult {
-  // Check file size
   if (file.size > FILE_UPLOAD_CONFIG.MAX_FILE_SIZE) {
     return {
       isValid: false,
@@ -16,7 +15,6 @@ export function validateFile(file: File): FileValidationResult {
     };
   }
 
-  // Check MIME type
   if (
     !FILE_UPLOAD_CONFIG.ALLOWED_MIME_TYPES.includes(
       file.type as "application/pdf"
@@ -28,7 +26,6 @@ export function validateFile(file: File): FileValidationResult {
     };
   }
 
-  // Check file extension
   const extension = path.extname(file.name).toLowerCase();
   if (!FILE_UPLOAD_CONFIG.ALLOWED_EXTENSIONS.includes(extension as ".pdf")) {
     return {
@@ -47,7 +44,7 @@ export function generateSafeFileName(originalName: string): string {
   const baseName = path
     .basename(originalName, extension)
     .replace(/[^a-zA-Z0-9-_]/g, "_")
-    .slice(0, 50); // Limit base name length
+    .slice(0, 50);
 
   return `${timestamp}-${randomString}-${baseName}${extension}`;
 }
@@ -71,8 +68,6 @@ export function handleApiError(error: unknown): {
   message: string;
   statusCode: number;
 } {
-  console.error("API Error:", error);
-
   if (error instanceof ApplicationError) {
     return {
       message: error.message,
@@ -81,7 +76,6 @@ export function handleApiError(error: unknown): {
   }
 
   if (error instanceof Error) {
-    // Prisma errors
     if (error.message.includes("P2002")) {
       return {
         message: "A submission with this email already exists",
@@ -89,7 +83,6 @@ export function handleApiError(error: unknown): {
       };
     }
 
-    // Validation errors
     if (error.name === "ZodError") {
       return {
         message: ERROR_MESSAGES.VALIDATION_ERROR,

@@ -8,22 +8,14 @@ export async function generateSimplePDF(
   submission: UserSubmission
 ): Promise<string> {
   try {
-    console.log(
-      `Starting simple PDF generation for submission ${submission.id}`
-    );
-
-    // Create a new PDF document
     const pdfDoc = await PDFDocument.create();
 
-    // Add a page
     const page = pdfDoc.addPage();
     const { width, height } = page.getSize();
 
-    // Load fonts
     const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-    // Add title
     page.drawText("Application Summary", {
       x: 50,
       y: height - 50,
@@ -32,7 +24,6 @@ export async function generateSimplePDF(
       color: rgb(0, 0, 0),
     });
 
-    // Add applicant info
     const info = [
       `Name: ${submission.firstName} ${submission.lastName}`,
       `Email: ${submission.email}`,
@@ -54,7 +45,6 @@ export async function generateSimplePDF(
       yPosition -= 20;
     }
 
-    // Add job description
     yPosition -= 20;
     page.drawText("Job Description:", {
       x: 50,
@@ -73,28 +63,21 @@ export async function generateSimplePDF(
       color: rgb(0, 0, 0),
     });
 
-    // Save the PDF
     const pdfBytes = await pdfDoc.save();
 
     if (pdfBytes.length === 0) {
       throw new ApplicationError("Generated PDF is empty", 500);
     }
 
-    // Create generated PDFs directory
     const generatedDir = path.join(process.cwd(), "uploads", "generated");
     await mkdir(generatedDir, { recursive: true });
 
-    // Save PDF file
     const pdfFileName = `application-${submission.id}.pdf`;
     const pdfPath = path.join(generatedDir, pdfFileName);
     await writeFile(pdfPath, pdfBytes);
 
-    console.log(`Simple PDF generated successfully: ${pdfPath}`);
-    console.log(`PDF size: ${pdfBytes.length} bytes`);
-
     return pdfPath;
   } catch (error) {
-    console.error("Simple PDF generation error:", error);
 
     if (error instanceof ApplicationError) {
       throw error;

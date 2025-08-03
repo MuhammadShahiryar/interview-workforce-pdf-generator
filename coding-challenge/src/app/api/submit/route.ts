@@ -19,10 +19,8 @@ export async function POST(
   const startTime = Date.now();
 
   try {
-    // Parse form data
     const formData = await request.formData();
 
-    // Extract and validate form fields
     const formFields = {
       firstName: formData.get("firstName") as string,
       lastName: formData.get("lastName") as string,
@@ -31,16 +29,13 @@ export async function POST(
       jobDescription: formData.get("jobDescription") as string,
     };
 
-    // Validate form data with Zod
     const validatedData = applicationFormSchema.parse(formFields);
 
-    // Handle file upload
     const file = formData.get("file") as File;
     if (!file) {
       throw new ApplicationError("No file uploaded", 400);
     }
 
-    // Validate file
     const fileValidation = validateFile(file);
     if (!fileValidation.isValid) {
       throw new ApplicationError(
@@ -49,45 +44,18 @@ export async function POST(
       );
     }
 
-    // Check if email already has a recent submission (rate limiting)
-    // TEMPORARILY DISABLED FOR TESTING
-    // const recentSubmission = await prisma.userSubmission.findFirst({
-    //   where: {
-    //     email: validatedData.email,
-    //     createdAt: {
-    //       gte: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
-    //     },
-    //   },
-    // });
-
-    // if (recentSubmission) {
-    //   throw new ApplicationError(
-    //     "Please wait 5 minutes before submitting again",
-    //     429
-    //   );
-    // }
-
-    // Create uploads directory if it doesn't exist
     const uploadsDir = path.join(process.cwd(), "uploads");
     await mkdir(uploadsDir, { recursive: true });
 
-    // Process and save uploaded file
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Generate file checksum for integrity (could be stored for file integrity checks)
-    // const checksum = getFileChecksum(buffer);
-
-    // Generate safe filename
     const fileName = generateSafeFileName(file.name);
     const filePath = path.join(uploadsDir, fileName);
 
-    // Save file to disk
     await writeFile(filePath, buffer);
 
-    // Create database entry with transaction
     const submission = await prisma.$transaction(async (tx) => {
-      // Create submission record
       const newSubmission = await tx.userSubmission.create({
         data: {
           ...validatedData,
@@ -100,22 +68,13 @@ export async function POST(
       return newSubmission;
     });
 
-    // Generate PDF (with error handling)
     let pdfPath: string;
     try {
       pdfPath = await generatePDF(submission);
     } catch (pdfError) {
-      // Update status to failed if PDF generation fails
       await prisma.userSubmission.update({
         where: { id: submission.id },
         data: { status: SubmissionStatus.FAILED },
-      });
-
-      console.error("PDF generation failed:", pdfError);
-      console.error("PDF error details:", {
-        message: pdfError instanceof Error ? pdfError.message : "Unknown error",
-        stack: pdfError instanceof Error ? pdfError.stack : "No stack trace",
-        submissionId: submission.id,
       });
       throw new ApplicationError(
         `PDF generation failed: ${
@@ -125,7 +84,6 @@ export async function POST(
       );
     }
 
-    // Update submission with PDF path
     await prisma.userSubmission.update({
       where: { id: submission.id },
       data: {
@@ -134,11 +92,8 @@ export async function POST(
       },
     });
 
-    // Log processing time
     const processingTime = Date.now() - startTime;
-    console.log(`Submission ${submission.id} processed in ${processingTime}ms`);
 
-    // Return success response
     return NextResponse.json<SubmitResponse>({
       success: true,
       submissionId: submission.id,
@@ -154,7 +109,6 @@ export async function POST(
   }
 }
 
-// Set max request size (Next.js 13+ way)
 export const config = {
   api: {
     bodyParser: {

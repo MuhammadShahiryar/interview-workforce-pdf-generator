@@ -1,11 +1,9 @@
-// File upload constraints
 export const FILE_UPLOAD_CONFIG = {
-  MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB in bytes
+  MAX_FILE_SIZE: 10 * 1024 * 1024,
   ALLOWED_MIME_TYPES: ["application/pdf"],
   ALLOWED_EXTENSIONS: [".pdf"],
 } as const;
 
-// Form validation constraints
 export const FORM_CONSTRAINTS = {
   NAME_MIN_LENGTH: 1,
   NAME_MAX_LENGTH: 50,
@@ -15,10 +13,9 @@ export const FORM_CONSTRAINTS = {
   PHONE_REGEX: /^[\d\s\-\+\(\)]+$/,
 } as const;
 
-// PDF generation settings
 export const PDF_CONFIG = {
-  PAGE_WIDTH: 595.28, // A4 width in points
-  PAGE_HEIGHT: 841.89, // A4 height in points
+  PAGE_WIDTH: 595.28,
+  PAGE_HEIGHT: 841.89,
   MARGIN: 50,
   TITLE_SIZE: 24,
   HEADING_SIZE: 16,
@@ -26,7 +23,6 @@ export const PDF_CONFIG = {
   LINE_HEIGHT: 18,
 } as const;
 
-// Error messages
 export const ERROR_MESSAGES = {
   FILE_TOO_LARGE: "File size exceeds 10MB limit",
   INVALID_FILE_TYPE: "Only PDF files are allowed",
@@ -38,7 +34,6 @@ export const ERROR_MESSAGES = {
   SERVER_ERROR: "Internal server error",
 } as const;
 
-// Status messages
 export const STATUS_MESSAGES = {
   UPLOADING: "Uploading file...",
   PROCESSING: "Processing your application...",
